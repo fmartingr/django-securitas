@@ -1,0 +1,3 @@
+*.pyc
+/testapp
+ddbb.sqlite3

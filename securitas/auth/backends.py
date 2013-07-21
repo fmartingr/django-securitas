@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-#from django.conf import settings
+from securitas import settings
 from securitas.models import TwoFactor
 from securitas.utils import get_twofactor_method
 
@@ -18,20 +18,28 @@ class SecuritasBackend(object):
             user = User.objects.get(username=username)
             if user.check_password(password):
                 try:
-                    # From here on, the user is already logged in
-                    # TODO make a settings variable to make
-                    #      OTP mandatory to log in
-                    result = user
+                    # Log in the user if the OTP is not mandatory
+                    if not settings.OTP_MANDATORY:
+                        result = user
+
                     if otp:
                         twofactor = TwoFactor.objects.filter(user=user)
+
+                        # Checks the registered two factor auths
+                        # method for this user
                         for registered_method in twofactor:
                             method = get_twofactor_method(
                                 registered_method.type)()
-                            check = method.verify(
-                                otp,
-                                method=registered_method)
-                            if check:
-                                return user
+                            try:
+                                check = method.verify(
+                                    otp, method=registered_method)
+                                # Returns the user when a twoauth method
+                                # is valid
+                                if check:
+                                    return user
+                            except:
+                                # Incorrect format OTPs
+                                pass
                 except TwoFactor.DoesNotExist:
                     # Let the user login if not have a two-auth
                     # method registered
@@ -40,3 +48,11 @@ class SecuritasBackend(object):
             pass
 
         return result
+
+
+class SecuritasDemoBackend(object):
+    """
+    Backend for presentations that don't check for a correct
+    OTP value
+    """
+    pass
